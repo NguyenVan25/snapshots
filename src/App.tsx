@@ -19,7 +19,7 @@ const API_ENDPOINTS: { [key: string]: string } = {
 }
 
 const Loading: React.FC = () => {
-  return <div className="h-[150px] w-[150px] animate-pulse rounded-full bg-gray-300"></div>
+  return <div className="h-[138px] w-[138px] animate-pulse rounded-full bg-gray-300"></div>
 }
 
 const App: React.FC = () => {
@@ -50,9 +50,15 @@ const App: React.FC = () => {
       })
   }, [category])
 
+  const updateURL = (newCategory: string, newSearchTerm: string) => {
+    const path = `${window.location.origin}/${newCategory}${newSearchTerm ? `/${newSearchTerm}` : ""}`
+    window.history.pushState({}, "", path)
+  }
+
   const handleClick = (selectedCategory: string) => {
     setCategory(selectedCategory)
     setSearchTerm("")
+    updateURL(selectedCategory, "")
   }
 
   const handleSearch = () => {
@@ -63,6 +69,7 @@ const App: React.FC = () => {
           token.chainId.toString().startsWith(searchTerm.toLowerCase()),
       ),
     )
+    updateURL(category, searchTerm)
   }
 
   const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -84,7 +91,7 @@ const App: React.FC = () => {
 
   return (
     <div className="container mx-[32px]">
-      <h1 id="one" className="mt-[20px] text-center font-serif text-[6rem] italic">
+      <h1 id="one" className="font-lobster mt-[20px] text-center text-[6rem] italic">
         SnapShot
       </h1>
       <div className="search-container mt-[50px] flex items-center justify-center">
@@ -108,7 +115,10 @@ const App: React.FC = () => {
         </button>
       </div>
       <div className="button mt-[40px] flex justify-center gap-[20px]">
-        <button onClick={() => handleClick("Ethereum")} className="h-[32px] w-[96px] rounded-md bg-gray-900 text-white">
+        <button
+          onClick={() => handleClick("Ethereum")}
+          className=" h-[32px] w-[96px] rounded-md bg-gray-900 text-white"
+        >
           Ethereum
         </button>
         <button onClick={() => handleClick("Arbitrum")} className="h-[32px] w-[96px] rounded-md bg-gray-900 text-white">
@@ -125,20 +135,20 @@ const App: React.FC = () => {
         <h2 className="mt-[40px] text-center font-sans text-[4rem]">
           {filteredTokens.length > 0 ? `${category} Tokens` : "No tokens found"}
         </h2>
-        <div className="mb-[20px] mt-[20px] grid grid-cols-[repeat(auto-fit,_minmax(0,_144px))] justify-center gap-[15px] px-[130px]">
+        <div className="mt-[20px] grid grid-cols-[repeat(auto-fit,_minmax(0,_138px))] justify-center gap-[25px] px-[130px] pb-[20px]">
           {isLoading
             ? Array.from({ length: 20 }).map((_, index) => <Loading key={index} />)
             : filteredTokens.map((token, index) => (
                 <div
                   key={index}
                   className="relative overflow-hidden rounded-full border-2 border-gray-200"
-                  style={{ minWidth: "144px", minHeight: "144px" }}
+                  style={{ minWidth: "138px", minHeight: "138px" }}
                   onMouseEnter={() => handleMouseEnter(token)}
                   onMouseLeave={handleMouseLeave}
                 >
                   <img
                     src={token.logoURI ? token.logoURI : DEFAULT_TOKEN_IMAGE}
-                    className="h-[144px] w-[144px] cursor-pointer rounded-full object-cover transition-transform duration-300 hover:scale-110"
+                    className="h-[138px] w-[138px] cursor-pointer rounded-full object-cover transition-transform duration-300 hover:scale-110"
                     onError={(e) => (e.currentTarget.src = DEFAULT_TOKEN_IMAGE)}
                     alt={token.symbol}
                   />

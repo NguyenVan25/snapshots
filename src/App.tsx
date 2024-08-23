@@ -14,7 +14,6 @@ const App: React.FC = () => {
   const [tokens, setTokens] = useState<any[]>([])
   const [filteredTokens, setFilteredTokens] = useState<any[]>([])
   const [isLoading, setLoading] = useState<boolean>(true)
-  const [hoveredToken, setHoveredToken] = useState<any | null>(null)
 
   // Fetch categories
   useEffect(() => {
@@ -87,14 +86,6 @@ const App: React.FC = () => {
     navigate(`/${category}/${searchTerm}`)
   }
 
-  const handleMouseEnter = (token: any) => {
-    setHoveredToken(token)
-  }
-
-  const handleMouseLeave = () => {
-    setHoveredToken(null)
-  }
-
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       handleSearch()
@@ -150,8 +141,6 @@ const App: React.FC = () => {
                   key={index}
                   className="relative overflow-hidden rounded-full border-2 border-gray-200"
                   style={{ minWidth: "138px", minHeight: "138px" }}
-                  onMouseEnter={() => handleMouseEnter(token)}
-                  onMouseLeave={handleMouseLeave}
                 >
                   <img
                     src={token.logoURI || DEFAULT_TOKEN_IMAGE}

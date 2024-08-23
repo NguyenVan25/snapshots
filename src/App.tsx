@@ -14,8 +14,11 @@ const App: React.FC = () => {
   const [tokens, setTokens] = useState<any[]>([])
   const [filteredTokens, setFilteredTokens] = useState<any[]>([])
   const [isLoading, setLoading] = useState<boolean>(true)
+  const [categoriesLoaded, setCategoriesLoaded] = useState<boolean>(false)
+  const [error, setError] = useState<string | null>(null)
+  const [selectedCategory, setSelectedCategory] = useState<string>(category || "")
 
-  // Fetch categories
+  // Fetch categories only once
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -23,67 +26,82 @@ const App: React.FC = () => {
         const data = response.data
         const fetchedCategories = data.map((file: any) => file.name.replace(".json", ""))
         setCategories(fetchedCategories)
+        setCategoriesLoaded(true)
 
         // Navigate to the first category if the current category is not valid
         if (!category || !fetchedCategories.includes(category)) {
-          navigate(`/${fetchedCategories[0] || ""}`)
+          navigate(`/${fetchedCategories[0]}`)
+        } else {
+          setSelectedCategory(category) // Set the selected category
         }
       } catch (error) {
         console.error("Failed to load categories", error)
       }
     }
 
-    fetchCategories()
-  }, [category, navigate])
+    if (!categoriesLoaded) {
+      fetchCategories()
+    }
+  }, [category, navigate, categoriesLoaded])
 
   // Fetch tokens based on selected category
   useEffect(() => {
     const fetchTokens = async () => {
-      if (!category) return
+      const currentCategory = category || categories[0]
+      if (!categoriesLoaded || !currentCategory) return
 
       setLoading(true)
+      setError(null) // Reset error before fetching
+
       try {
         const response = await axios.get(
-          `https://raw.githubusercontent.com/viaprotocol/tokenlists/main/tokenlists/${category}.json`,
+          `https://raw.githubusercontent.com/viaprotocol/tokenlists/main/tokenlists/${currentCategory}.json`,
         )
         const data = response.data
-        setTokens(data)
-        setFilteredTokens(data)
+        if (!Array.isArray(data) || data.length === 0) {
+          setError("No tokens found")
+        } else {
+          setTokens(data)
+          setFilteredTokens(data) // Reset filtered tokens for the new category
+        }
       } catch (error) {
         console.error("Failed to load tokens", error)
+        setError("Failed to load tokens")
       } finally {
         setLoading(false)
       }
     }
 
     fetchTokens()
-  }, [category])
+  }, [category, categoriesLoaded])
 
   // Handle search input
-  useEffect(() => {
-    const performSearch = () => {
-      if (searchTerm) {
-        const searchResults = tokens.filter(
-          (token) =>
-            token.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            token.address.toLowerCase().includes(searchTerm.toLowerCase()),
-        )
-        setFilteredTokens(searchResults)
-      } else {
-        setFilteredTokens(tokens)
-      }
+  const performSearch = () => {
+    if (searchTerm) {
+      const searchResults = tokens.filter(
+        (token) =>
+          token.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          token.address.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
+      setFilteredTokens(searchResults)
+    } else {
+      setFilteredTokens(tokens)
     }
-
-    performSearch()
-  }, [searchTerm, tokens])
+  }
 
   const handleClick = (newCategory: string) => {
-    navigate(`/${newCategory}/${searchTerm}`)
+    setSelectedCategory(newCategory)
+    // Navigate to the new category and clear the search term
+    navigate(`/${newCategory}`)
+    // Reset the search term
+    setSearchTerm("")
+    setFilteredTokens(tokens) // Show all tokens for the new category
   }
 
   const handleSearch = () => {
-    navigate(`/${category}/${searchTerm}`)
+    performSearch() // Perform search when the search button is clicked
+    navigate(`/${selectedCategory}/${searchTerm}`) // Update the URL with the search term
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -116,20 +134,24 @@ const App: React.FC = () => {
         </button>
       </div>
       <div className="mt-[50px] grid grid-cols-[repeat(auto-fit,_minmax(0,_135px))] items-center justify-center gap-[25px] px-[120px] pb-[20px] sm:gap-[30px] sm:px-[70px]">
-        {categories.map((category) => (
+        {categories.map((cat) => (
           <button
-            key={category}
-            onClick={() => handleClick(category)}
-            className="h-[32px] w-[135px] rounded-md bg-gray-900 text-white"
+            key={cat}
+            onClick={() => handleClick(cat)}
+            className={`h-[32px] w-[135px] rounded-md ${cat === selectedCategory ? "bg-[#7c7c7d] text-white" : "bg-[#2B2B47] text-white"}`}
           >
-            {category}
+            {cat}
           </button>
         ))}
       </div>
 
       <main>
         <h2 className="mt-[40px] text-center font-sans text-[4rem]">
-          {filteredTokens.length > 0 ? `${category} Tokens` : "No tokens found"}
+          {error
+            ? error
+            : filteredTokens.length > 0
+              ? `${selectedCategory || categories[0]} Tokens`
+              : "No tokens found"}
         </h2>
         <div className="mt-[20px] grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] justify-center gap-[30px] px-[100px] pb-[20px]">
           {isLoading
@@ -146,7 +168,7 @@ const App: React.FC = () => {
                     src={token.logoURI || DEFAULT_TOKEN_IMAGE}
                     className="h-[138px] w-[138px] cursor-pointer rounded-full object-cover transition-transform duration-300 hover:scale-110"
                     onError={(e) => (e.currentTarget.src = DEFAULT_TOKEN_IMAGE)}
-                    alt={`${category} ${token.name}`}
+                    alt={`${selectedCategory || categories[0]} ${token.name}`}
                   />
                 </div>
               ))}

@@ -1,84 +1,93 @@
-import React, { useEffect, useState } from "react"
+import React, { useState, useEffect } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import axios from "axios"
 
-interface Token {
-  symbol: string
-  name: string
-  address: string
-  decimals: number
-  chainId: number
-  logoURI: string
-  coingeckoId?: string
-  listedIn?: string[]
-}
-
-const API_ENDPOINTS: { [key: string]: string } = {
-  Ethereum: "https://raw.githubusercontent.com/viaprotocol/tokenlists/main/tokenlists/ethereum.json",
-  Arbitrum: "https://raw.githubusercontent.com/viaprotocol/tokenlists/main/tokenlists/arbitrum.json",
-  Optimism: "https://raw.githubusercontent.com/viaprotocol/tokenlists/main/tokenlists/optimism.json",
-  Bsc: "https://raw.githubusercontent.com/viaprotocol/tokenlists/main/tokenlists/bsc.json",
-}
-
-const Loading: React.FC = () => {
-  return <div className="h-[138px] w-[138px] animate-pulse rounded-full bg-gray-300"></div>
-}
+const DEFAULT_TOKEN_IMAGE =
+  "https://cdn.imgbin.com/9/8/16/imgbin-computer-icons-question-mark-scalable-graphics-blue-question-mark-icon-white-question-mark-n3SxnveXUmn5aQ5jsUSiPZ48T.jpg"
 
 const App: React.FC = () => {
-  const [category, setCategory] = useState<string>("Ethereum")
-  const [tokens, setTokens] = useState<Token[]>([])
-  const [isLoading, setLoading] = useState<boolean>(true)
-  const [searchTerm, setSearchTerm] = useState<string>("")
-  const [filteredTokens, setFilteredTokens] = useState<Token[]>([])
-  const [hoveredToken, setHoveredToken] = useState<Token | null>(null)
+  const { category = "", searchQuery = "" } = useParams<{ category: string; searchQuery: string }>()
+  const navigate = useNavigate()
 
+  const [categories, setCategories] = useState<string[]>([])
+  const [searchTerm, setSearchTerm] = useState<string>(searchQuery)
+  const [tokens, setTokens] = useState<any[]>([])
+  const [filteredTokens, setFilteredTokens] = useState<any[]>([])
+  const [isLoading, setLoading] = useState<boolean>(true)
+  const [hoveredToken, setHoveredToken] = useState<any | null>(null)
+
+  // Fetch categories
   useEffect(() => {
-    setLoading(true)
-    fetch(API_ENDPOINTS[category])
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Network response was not ok")
+    const fetchCategories = async () => {
+      try {
+        const response = await axios.get("https://api.github.com/repos/viaprotocol/tokenlists/contents/tokenlists")
+        const data = response.data
+        const fetchedCategories = data.map((file: any) => file.name.replace(".json", ""))
+        setCategories(fetchedCategories)
+
+        // Navigate to the first category if the current category is not valid
+        if (!category || !fetchedCategories.includes(category)) {
+          navigate(`/${fetchedCategories[0] || ""}`)
         }
-        return response.json()
-      })
-      .then((data: Token[]) => {
+      } catch (error) {
+        console.error("Failed to load categories", error)
+      }
+    }
+
+    fetchCategories()
+  }, [category, navigate])
+
+  // Fetch tokens based on selected category
+  useEffect(() => {
+    const fetchTokens = async () => {
+      if (!category) return
+
+      setLoading(true)
+      try {
+        const response = await axios.get(
+          `https://raw.githubusercontent.com/viaprotocol/tokenlists/main/tokenlists/${category}.json`,
+        )
+        const data = response.data
         setTokens(data)
         setFilteredTokens(data)
+      } catch (error) {
+        console.error("Failed to load tokens", error)
+      } finally {
         setLoading(false)
-      })
-      .catch((error) => {
-        console.error("There was a problem with the fetch operation:", error)
-        setLoading(false)
-      })
+      }
+    }
+
+    fetchTokens()
   }, [category])
 
-  const updateURL = (newCategory: string, newSearchTerm: string) => {
-    const path = `${window.location.origin}/${newCategory}${newSearchTerm ? `/${newSearchTerm}` : ""}`
-    window.history.pushState({}, "", path)
-  }
+  // Handle search input
+  useEffect(() => {
+    const performSearch = () => {
+      if (searchTerm) {
+        const searchResults = tokens.filter(
+          (token) =>
+            token.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            token.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            token.address.toLowerCase().includes(searchTerm.toLowerCase()),
+        )
+        setFilteredTokens(searchResults)
+      } else {
+        setFilteredTokens(tokens)
+      }
+    }
 
-  const handleClick = (selectedCategory: string) => {
-    setCategory(selectedCategory)
-    setSearchTerm("")
-    updateURL(selectedCategory, "")
+    performSearch()
+  }, [searchTerm, tokens])
+
+  const handleClick = (newCategory: string) => {
+    navigate(`/${newCategory}/${searchTerm}`)
   }
 
   const handleSearch = () => {
-    setFilteredTokens(
-      tokens.filter(
-        (token) =>
-          token.symbol.toLowerCase().startsWith(searchTerm.toLowerCase()) ||
-          token.chainId.toString().startsWith(searchTerm.toLowerCase()),
-      ),
-    )
-    updateURL(category, searchTerm)
+    navigate(`/${category}/${searchTerm}`)
   }
 
-  const handleSearchKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch()
-    }
-  }
-
-  const handleMouseEnter = (token: Token) => {
+  const handleMouseEnter = (token: any) => {
     setHoveredToken(token)
   }
 
@@ -86,14 +95,15 @@ const App: React.FC = () => {
     setHoveredToken(null)
   }
 
-  const DEFAULT_TOKEN_IMAGE =
-    "https://cdn.imgbin.com/9/8/16/imgbin-computer-icons-question-mark-scalable-graphics-blue-question-mark-icon-white-question-mark-n3SxnveXUmn5aQ5jsUSiPZ48T.jpg"
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      handleSearch()
+    }
+  }
 
   return (
     <div className="container mx-[32px]">
-      <h1 id="one" className="font-lobster mt-[20px] text-center text-[6rem] italic">
-        SnapShot
-      </h1>
+      <h1 className="font-lobster mt-[20px] text-center text-[96px] italic">Token List</h1>
       <div className="search-container mt-[50px] flex items-center justify-center">
         <input
           type="text"
@@ -101,11 +111,11 @@ const App: React.FC = () => {
           placeholder="Search"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          onKeyDown={handleSearchKeyPress}
+          onKeyDown={handleKeyDown}
         />
         <button
           type="button"
-          className="submit bl-none flex h-[32px] w-[48px] items-center justify-center rounded-r-md border-[1px] border-gray-700 bg-gray-600 transition-colors duration-300 hover:bg-gray-800 "
+          className="submit bl-none flex h-[32px] w-[48px] items-center justify-center rounded-r-md border-[1px] border-gray-700 bg-gray-600 transition-colors duration-300 hover:bg-gray-800"
           onClick={handleSearch}
         >
           <svg height="24" width="24" viewBox="0 0 64 64">
@@ -114,30 +124,27 @@ const App: React.FC = () => {
           </svg>
         </button>
       </div>
-      <div className="button mt-[40px] flex justify-center gap-[20px]">
-        <button
-          onClick={() => handleClick("Ethereum")}
-          className=" h-[32px] w-[96px] rounded-md bg-gray-900 text-white"
-        >
-          Ethereum
-        </button>
-        <button onClick={() => handleClick("Arbitrum")} className="h-[32px] w-[96px] rounded-md bg-gray-900 text-white">
-          Arbitrum
-        </button>
-        <button onClick={() => handleClick("Optimism")} className="h-[32px] w-[96px] rounded-md bg-gray-900 text-white">
-          Optimism
-        </button>
-        <button onClick={() => handleClick("Bsc")} className="h-[32px] w-[96px] rounded-md bg-gray-900 text-white">
-          Bsc
-        </button>
+      <div className="mt-[50px] grid grid-cols-[repeat(auto-fit,_minmax(0,_135px))] items-center justify-center gap-[25px] px-[120px] pb-[20px] sm:gap-[30px] sm:px-[70px]">
+        {categories.map((category) => (
+          <button
+            key={category}
+            onClick={() => handleClick(category)}
+            className="h-[32px] w-[135px] rounded-md bg-gray-900 text-white"
+          >
+            {category}
+          </button>
+        ))}
       </div>
-      <div>
+
+      <main>
         <h2 className="mt-[40px] text-center font-sans text-[4rem]">
           {filteredTokens.length > 0 ? `${category} Tokens` : "No tokens found"}
         </h2>
-        <div className="mt-[20px] grid grid-cols-[repeat(auto-fit,_minmax(0,_138px))] justify-center gap-[25px] px-[130px] pb-[20px]">
+        <div className="mt-[20px] grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] justify-center gap-[30px] px-[100px] pb-[20px]">
           {isLoading
-            ? Array.from({ length: 20 }).map((_, index) => <Loading key={index} />)
+            ? Array.from({ length: 20 }).map((_, index) => (
+                <div key={index} className="h-[138px] w-[138px] animate-pulse rounded-full bg-gray-300"></div>
+              ))
             : filteredTokens.map((token, index) => (
                 <div
                   key={index}
@@ -147,33 +154,15 @@ const App: React.FC = () => {
                   onMouseLeave={handleMouseLeave}
                 >
                   <img
-                    src={token.logoURI ? token.logoURI : DEFAULT_TOKEN_IMAGE}
+                    src={token.logoURI || DEFAULT_TOKEN_IMAGE}
                     className="h-[138px] w-[138px] cursor-pointer rounded-full object-cover transition-transform duration-300 hover:scale-110"
                     onError={(e) => (e.currentTarget.src = DEFAULT_TOKEN_IMAGE)}
-                    alt={token.symbol}
+                    alt={`${category} ${token.name}`}
                   />
-                  {hoveredToken === token && (
-                    <div className="absolute bottom-full left-1/2 z-10 -translate-x-1/2 transform whitespace-nowrap rounded-lg bg-black bg-opacity-80 p-[8px] text-[12px] text-white">
-                      <p>
-                        <strong>Name:</strong> {token.name}
-                      </p>
-                      <p>
-                        <strong>Logo URI:</strong>{" "}
-                        <a
-                          href={token.logoURI}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-yellow-400 hover:underline"
-                        >
-                          Open Image
-                        </a>
-                      </p>
-                    </div>
-                  )}
                 </div>
               ))}
         </div>
-      </div>
+      </main>
     </div>
   )
 }

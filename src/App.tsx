@@ -1,6 +1,31 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import axios from "axios"
+import { FixedSizeGrid } from "react-window"
+
+const TokenItem: React.FC<{ columnIndex: number; rowIndex: number; style: React.CSSProperties; data: any[] }> = ({
+  columnIndex,
+  rowIndex,
+  style,
+  data,
+}) => {
+  const token = data[rowIndex * 3 + columnIndex]
+  if (!token) return null
+
+  return (
+    <div
+      className="relative flex h-[125px] w-[125px] items-center justify-center gap-[20px] overflow-hidden rounded-full"
+      style={style}
+    >
+      <img
+        src={token.logoURI || DEFAULT_TOKEN_IMAGE}
+        className="h-[125px] w-[125px] cursor-pointer rounded-full border-[2px] object-cover transition-transform duration-300 hover:scale-110"
+        onError={(e) => (e.currentTarget.src = DEFAULT_TOKEN_IMAGE)}
+        alt={`${token.name}`}
+      />
+    </div>
+  )
+}
 
 const DEFAULT_TOKEN_IMAGE =
   "https://cdn.imgbin.com/9/8/16/imgbin-computer-icons-question-mark-scalable-graphics-blue-question-mark-icon-white-question-mark-n3SxnveXUmn5aQ5jsUSiPZ48T.jpg"
@@ -18,7 +43,10 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>(category || "")
 
-  // Fetch categories only once
+  // State for grid layout
+  const [columnCount, setColumnCount] = useState<number>(Math.floor((window.innerWidth - 140) / 158))
+  const [gridWidth, setGridWidth] = useState<number>(window.innerWidth - 140)
+
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -28,11 +56,10 @@ const App: React.FC = () => {
         setCategories(fetchedCategories)
         setCategoriesLoaded(true)
 
-        // Navigate to the first category if the current category is not valid
         if (!category || !fetchedCategories.includes(category)) {
           navigate(`/${fetchedCategories[0]}`)
         } else {
-          setSelectedCategory(category) // Set the selected category
+          setSelectedCategory(category)
         }
       } catch (error) {
         console.error("Failed to load categories", error)
@@ -44,14 +71,13 @@ const App: React.FC = () => {
     }
   }, [category, navigate, categoriesLoaded])
 
-  // Fetch tokens based on selected category
   useEffect(() => {
     const fetchTokens = async () => {
       const currentCategory = category || categories[0]
       if (!categoriesLoaded || !currentCategory) return
 
       setLoading(true)
-      setError(null) // Reset error before fetching
+      setError(null)
 
       try {
         const response = await axios.get(
@@ -62,7 +88,7 @@ const App: React.FC = () => {
           setError("No tokens found")
         } else {
           setTokens(data)
-          setFilteredTokens(data) // Reset filtered tokens for the new category
+          setFilteredTokens(data)
         }
       } catch (error) {
         console.error("Failed to load tokens", error)
@@ -75,7 +101,6 @@ const App: React.FC = () => {
     fetchTokens()
   }, [category, categoriesLoaded])
 
-  // Handle search input
   const performSearch = () => {
     if (searchTerm) {
       const searchResults = tokens.filter(
@@ -92,16 +117,14 @@ const App: React.FC = () => {
 
   const handleClick = (newCategory: string) => {
     setSelectedCategory(newCategory)
-    // Navigate to the new category and clear the search term
     navigate(`/${newCategory}`)
-    // Reset the search term
     setSearchTerm("")
-    setFilteredTokens(tokens) // Show all tokens for the new category
+    setFilteredTokens(tokens)
   }
 
   const handleSearch = () => {
-    performSearch() // Perform search when the search button is clicked
-    navigate(`/${selectedCategory}/${searchTerm}`) // Update the URL with the search term
+    performSearch()
+    navigate(`/${selectedCategory}/${searchTerm}`)
   }
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
@@ -110,13 +133,24 @@ const App: React.FC = () => {
     }
   }
 
+  // Update grid layout on window resize
+  const handleResize = useCallback(() => {
+    setGridWidth(window.innerWidth - 140)
+    setColumnCount(Math.floor((window.innerWidth - 140) / 158))
+  }, [])
+
+  useEffect(() => {
+    window.addEventListener("resize", handleResize)
+    return () => window.removeEventListener("resize", handleResize)
+  }, [handleResize])
+
   return (
-    <div className="container mx-[32px]">
-      <h1 className="font-lobster mt-[20px] text-center text-[96px] italic">Token List</h1>
-      <div className="search-container mt-[50px] flex items-center justify-center">
+    <div className="container mx-auto px-4">
+      <h1 className="mt-4 text-center font-lobster text-6xl italic">Token List</h1>
+      <div className="search-container mt-12 flex items-center justify-center">
         <input
           type="text"
-          className="search br-none h-[32px] w-[384px] rounded-l-md border-[1px] border-gray-700 px-[8px] text-xl outline-none"
+          className="search h-8 w-full max-w-xl rounded-l-md border border-gray-700 px-2 text-xl outline-none"
           placeholder="Search"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
@@ -124,7 +158,7 @@ const App: React.FC = () => {
         />
         <button
           type="button"
-          className="submit bl-none flex h-[32px] w-[48px] items-center justify-center rounded-r-md border-[1px] border-gray-700 bg-gray-600 transition-colors duration-300 hover:bg-gray-800"
+          className="submit flex h-8 w-12 items-center justify-center rounded-r-md border border-gray-700 bg-gray-600 text-white transition-colors duration-300 hover:bg-gray-800"
           onClick={handleSearch}
         >
           <svg height="24" width="24" viewBox="0 0 64 64">
@@ -133,45 +167,46 @@ const App: React.FC = () => {
           </svg>
         </button>
       </div>
-      <div className="mt-[50px] grid grid-cols-[repeat(auto-fit,_minmax(0,_135px))] items-center justify-center gap-[25px] px-[120px] pb-[20px] sm:gap-[30px] sm:px-[70px]">
+      <div className="mt-12 grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] justify-center gap-[30px] px-[100px] pb-[20px]">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => handleClick(cat)}
-            className={`h-[32px] w-[135px] rounded-md ${cat === selectedCategory ? "bg-[#7c7c7d] text-white" : "bg-[#2B2B47] text-white"}`}
+            className={`h-8 w-32 rounded-md ${cat === selectedCategory ? "bg-gray-600 text-white" : "bg-gray-800 text-white"}`}
           >
             {cat}
           </button>
         ))}
       </div>
 
-      <main>
-        <h2 className="mt-[40px] text-center font-sans text-[4rem]">
+      <main className="overflow-hidden px-[70px]">
+        <h2 className="mt-10 text-center text-3xl">
           {error
             ? error
             : filteredTokens.length > 0
               ? `${selectedCategory || categories[0]} Tokens`
               : "No tokens found"}
         </h2>
-        <div className="mt-[20px] grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] justify-center gap-[30px] px-[100px] pb-[20px]">
-          {isLoading
-            ? Array.from({ length: 20 }).map((_, index) => (
-                <div key={index} className="h-[138px] w-[138px] animate-pulse rounded-full bg-gray-300"></div>
-              ))
-            : filteredTokens.map((token, index) => (
-                <div
-                  key={index}
-                  className="relative overflow-hidden rounded-full border-2 border-gray-200"
-                  style={{ minWidth: "138px", minHeight: "138px" }}
-                >
-                  <img
-                    src={token.logoURI || DEFAULT_TOKEN_IMAGE}
-                    className="h-[138px] w-[138px] cursor-pointer rounded-full object-cover transition-transform duration-300 hover:scale-110"
-                    onError={(e) => (e.currentTarget.src = DEFAULT_TOKEN_IMAGE)}
-                    alt={`${selectedCategory || categories[0]} ${token.name}`}
-                  />
-                </div>
+        <div className="relative" style={{ width: "100%", height: "600px" }}>
+          {isLoading ? (
+            <div className="grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] gap-4 p-4">
+              {[...Array(20)].map((_, index) => (
+                <div key={index} className="h-[125px] w-[125px] animate-pulse rounded-full bg-gray-200" />
               ))}
+            </div>
+          ) : (
+            <FixedSizeGrid
+              columnCount={columnCount}
+              columnWidth={158}
+              height={600}
+              rowCount={Math.ceil(filteredTokens.length / columnCount)}
+              rowHeight={158}
+              width={gridWidth}
+              itemData={filteredTokens}
+            >
+              {TokenItem}
+            </FixedSizeGrid>
+          )}
         </div>
       </main>
     </div>

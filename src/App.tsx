@@ -3,13 +3,15 @@ import { useParams, useNavigate } from "react-router-dom"
 import axios from "axios"
 import { FixedSizeGrid } from "react-window"
 
-const TokenItem: React.FC<{ columnIndex: number; rowIndex: number; style: React.CSSProperties; data: any[] }> = ({
-  columnIndex,
-  rowIndex,
-  style,
-  data,
-}) => {
-  const token = data[rowIndex * 3 + columnIndex]
+// Component TokenItem để hiển thị từng token
+const TokenItem: React.FC<{
+  columnIndex: number
+  rowIndex: number
+  style: React.CSSProperties
+  data: any[]
+  columnCount: number
+}> = ({ columnIndex, rowIndex, style, data, columnCount }) => {
+  const token = data[rowIndex * columnCount + columnIndex]
   if (!token) return null
 
   return (
@@ -19,7 +21,7 @@ const TokenItem: React.FC<{ columnIndex: number; rowIndex: number; style: React.
     >
       <img
         src={token.logoURI || DEFAULT_TOKEN_IMAGE}
-        className="h-[125px] w-[125px] cursor-pointer rounded-full border-[2px] object-cover transition-transform duration-300 hover:scale-110"
+        className="flex h-[125px] w-[125px] cursor-pointer items-center justify-center rounded-full border-[2px] object-cover transition-transform duration-300 hover:scale-110"
         onError={(e) => (e.currentTarget.src = DEFAULT_TOKEN_IMAGE)}
         alt={`${token.name}`}
       />
@@ -27,9 +29,11 @@ const TokenItem: React.FC<{ columnIndex: number; rowIndex: number; style: React.
   )
 }
 
+// Hình ảnh mặc định nếu logoURI không tải được
 const DEFAULT_TOKEN_IMAGE =
   "https://cdn.imgbin.com/9/8/16/imgbin-computer-icons-question-mark-scalable-graphics-blue-question-mark-icon-white-question-mark-n3SxnveXUmn5aQ5jsUSiPZ48T.jpg"
 
+// Component chính của ứng dụng
 const App: React.FC = () => {
   const { category = "", searchQuery = "" } = useParams<{ category: string; searchQuery: string }>()
   const navigate = useNavigate()
@@ -43,10 +47,11 @@ const App: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string>(category || "")
 
-  // State for grid layout
+  // State cho layout lưới
   const [columnCount, setColumnCount] = useState<number>(Math.floor((window.innerWidth - 140) / 158))
   const [gridWidth, setGridWidth] = useState<number>(window.innerWidth - 140)
 
+  // Lấy danh sách các category từ GitHub
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -71,6 +76,7 @@ const App: React.FC = () => {
     }
   }, [category, navigate, categoriesLoaded])
 
+  // Lấy danh sách tokens từ category hiện tại
   useEffect(() => {
     const fetchTokens = async () => {
       const currentCategory = category || categories[0]
@@ -86,6 +92,7 @@ const App: React.FC = () => {
         const data = response.data
         if (!Array.isArray(data) || data.length === 0) {
           setError("No tokens found")
+          setFilteredTokens([]) // Làm trống danh sách khi không tìm thấy token
         } else {
           setTokens(data)
           setFilteredTokens(data)
@@ -93,6 +100,7 @@ const App: React.FC = () => {
       } catch (error) {
         console.error("Failed to load tokens", error)
         setError("Failed to load tokens")
+        setFilteredTokens([]) // Làm trống danh sách khi có lỗi
       } finally {
         setLoading(false)
       }
@@ -101,6 +109,7 @@ const App: React.FC = () => {
     fetchTokens()
   }, [category, categoriesLoaded])
 
+  // Thực hiện tìm kiếm token
   const performSearch = () => {
     if (searchTerm) {
       const searchResults = tokens.filter(
@@ -115,6 +124,7 @@ const App: React.FC = () => {
     }
   }
 
+  // Xử lý sự kiện khi nhấn vào một category
   const handleClick = (newCategory: string) => {
     setSelectedCategory(newCategory)
     navigate(`/${newCategory}`)
@@ -122,6 +132,7 @@ const App: React.FC = () => {
     setFilteredTokens(tokens)
   }
 
+  // Xử lý sự kiện tìm kiếm khi nhấn nút hoặc nhấn Enter
   const handleSearch = () => {
     performSearch()
     navigate(`/${selectedCategory}/${searchTerm}`)
@@ -133,7 +144,7 @@ const App: React.FC = () => {
     }
   }
 
-  // Update grid layout on window resize
+  // Cập nhật layout lưới khi thay đổi kích thước cửa sổ
   const handleResize = useCallback(() => {
     setGridWidth(window.innerWidth - 140)
     setColumnCount(Math.floor((window.innerWidth - 140) / 158))
@@ -167,12 +178,12 @@ const App: React.FC = () => {
           </svg>
         </button>
       </div>
-      <div className="mt-12 grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] justify-center gap-[30px] px-[100px] pb-[20px]">
+      <div className="mt-12 grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] gap-[30px] px-[100px] pb-[20px] sm:grid-cols-1 sm:items-center sm:justify-center sm:gap-4 sm:px-4">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => handleClick(cat)}
-            className={`h-8 w-32 rounded-md ${cat === selectedCategory ? "bg-gray-600 text-white" : "bg-gray-800 text-white"}`}
+            className={`h-8 w-32 rounded-md sm:w-[430px] ${cat === selectedCategory ? "bg-gray-600 text-white" : "bg-gray-800 text-white"}`}
           >
             {cat}
           </button>
@@ -204,7 +215,15 @@ const App: React.FC = () => {
               width={gridWidth}
               itemData={filteredTokens}
             >
-              {TokenItem}
+              {({ columnIndex, rowIndex, style }) => (
+                <TokenItem
+                  columnIndex={columnIndex}
+                  rowIndex={rowIndex}
+                  style={style}
+                  data={filteredTokens}
+                  columnCount={columnCount}
+                />
+              )}
             </FixedSizeGrid>
           )}
         </div>

@@ -178,7 +178,7 @@ const App: React.FC = () => {
           </svg>
         </button>
       </div>
-      <div className="mt-12 grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] gap-[30px] px-[100px] pb-[20px] sm:grid-cols-1 sm:items-center sm:justify-center sm:gap-4 sm:px-4">
+      <div className="mt-12 flex grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] items-center justify-center gap-[30px] px-[100px] pb-[20px]  sm:grid-cols-1 sm:items-center sm:justify-center sm:gap-4 sm:px-4">
         {categories.map((cat) => (
           <button
             key={cat}

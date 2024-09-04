@@ -16,12 +16,12 @@ const TokenItem: React.FC<{
 
   return (
     <div
-      className="relative flex h-[125px] w-[125px] items-center justify-center gap-[20px] overflow-hidden rounded-full"
+      className="relative flex h-[120px] w-[120px] items-center justify-center overflow-hidden  rounded-full"
       style={style}
     >
       <img
         src={token.logoURI || DEFAULT_TOKEN_IMAGE}
-        className="flex h-[125px] w-[125px] cursor-pointer items-center justify-center rounded-full border-[2px] object-cover transition-transform duration-300 hover:scale-110"
+        className="flex h-[120px] w-[120px] cursor-pointer items-center justify-center rounded-full border-[2px] object-cover transition-transform duration-300 hover:scale-110"
         onError={(e) => (e.currentTarget.src = DEFAULT_TOKEN_IMAGE)}
         alt={`${token.name}`}
       />
@@ -147,7 +147,7 @@ const App: React.FC = () => {
   // Cập nhật layout lưới khi thay đổi kích thước cửa sổ
   const handleResize = useCallback(() => {
     setGridWidth(window.innerWidth - 140)
-    setColumnCount(Math.floor((window.innerWidth - 140) / 158))
+    setColumnCount(Math.floor((window.innerWidth - 140) / 145))
   }, [])
 
   useEffect(() => {
@@ -178,19 +178,19 @@ const App: React.FC = () => {
           </svg>
         </button>
       </div>
-      <div className="mt-12 flex grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] items-center justify-center gap-[30px] px-[100px] pb-[20px]  sm:grid-cols-1 sm:items-center sm:justify-center sm:gap-4 sm:px-4">
+      <div className="mt-12 flex grid w-full grid-cols-[repeat(auto-fit,_minmax(0,_128px))] items-center justify-center gap-[30px] px-[100px] pb-[20px] sm:grid-cols-1 sm:items-center sm:justify-center sm:gap-4 sm:px-4">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => handleClick(cat)}
-            className={`h-8 w-32 rounded-md sm:w-[430px] ${cat === selectedCategory ? "bg-gray-600 text-white" : "bg-gray-800 text-white"}`}
+            className={`h-8 w-32 rounded-md sm:w-full ${cat === selectedCategory ? "bg-gray-600 text-white" : "bg-gray-800 text-white"}`}
           >
             {cat}
           </button>
         ))}
       </div>
 
-      <main className="overflow-hidden px-[70px]">
+      <main className="overflow-hidden px-[50px]">
         <h2 className="mt-10 text-center text-3xl">
           {error
             ? error
@@ -198,20 +198,20 @@ const App: React.FC = () => {
               ? `${selectedCategory || categories[0]} Tokens`
               : "No tokens found"}
         </h2>
-        <div className="relative" style={{ width: "100%", height: "600px" }}>
+        <div className="relative 2xl:pl-[40px] sm:pl-[10px] " style={{ width: "100%", height: "600px" }}>
           {isLoading ? (
-            <div className="grid grid-cols-[repeat(auto-fit,_minmax(0,_128px))] gap-4 p-4">
+            <div className="grid grid-cols-[repeat(auto-fit,_minmax(0,_120px))] gap-4 p-4">
               {[...Array(20)].map((_, index) => (
-                <div key={index} className="h-[125px] w-[125px] animate-pulse rounded-full bg-gray-200" />
+                <div key={index} className="h-[120px] w-[120px] animate-pulse rounded-full bg-gray-200" />
               ))}
             </div>
           ) : (
             <FixedSizeGrid
               columnCount={columnCount}
-              columnWidth={158}
+              columnWidth={145}
               height={600}
               rowCount={Math.ceil(filteredTokens.length / columnCount)}
-              rowHeight={158}
+              rowHeight={145}
               width={gridWidth}
               itemData={filteredTokens}
             >
